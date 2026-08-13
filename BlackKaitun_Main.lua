@@ -1,6 +1,6 @@
 -- =============================================
 -- BLACK KAITUN - BLOX FRUITS SCRIPT
--- MAIN EXECUTOR SCRIPT (All modules integrated)
+-- Executor: Synapse X, Script-Ware, Fluxus, etc.
 -- =============================================
 -- Loadstring: loadstring(game:HttpGet("https://raw.githubusercontent.com/huydeptrai180312-oss/Black-Kaitun/main/BlackKaitun.lua"))()
 
@@ -20,31 +20,16 @@ local Config = {
         EatFruitStore = false
     },
     Items = {
-        -- Melees 
         AutoFullyMelees = true,
-
-        -- Swords 
         Saber = true,
         CursedDualKatana = true,
-
-        -- Guns 
         SoulGuitar = true,
-
-        -- Upgrades 
         RaceV2 = true
     },
     Settings = {
         StayInSea2UntilHaveDarkFragments = false
     }
 }
-
--- Services
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-
-local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
 
 -- =============================================
 -- LOGGER MODULE
@@ -84,12 +69,16 @@ end
 local Level = {}
 
 function Level.GetCurrentLevel()
-    if not character or not character:FindFirstChild("Humanoid") then return 0 end
-    return character.Humanoid.Health or 0
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if not character then return 0 end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    return humanoid and humanoid.Health or 0
 end
 
 function Level.GetMaxLevel()
-    return 2400
+    return 2400  -- or based on config
 end
 
 function Level.IsMaxLevel()
@@ -107,12 +96,13 @@ function Boss.GetNearestBoss()
     
     local nearest = nil
     local distance = math.huge
+    local player = game.Players.LocalPlayer
     
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
+    if not player.Character then return nil end
     
     for _, enemy in pairs(enemies:GetChildren()) do
         if enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") then
-            local dist = (enemy.HumanoidRootPart.Position - character.HumanoidRootPart.Position).Magnitude
+            local dist = (enemy.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
             if dist < distance and dist < 500 then
                 distance = dist
                 nearest = enemy
@@ -127,13 +117,17 @@ function Boss.AutoFight(boss)
     if not boss or not boss:FindFirstChild("Humanoid") then return false end
     
     Logger.Info("Fighting boss:", boss.Name)
+    local character = game.Players.LocalPlayer.Character
     if not character then return false end
     
+    -- Move to boss
     character:MoveTo(boss.HumanoidRootPart.Position + Vector3.new(5, 0, 5))
     wait(1)
     
+    -- Attack sequence
     for i = 1, 20 do
         if not boss or boss.Humanoid.Health <= 0 then break end
+        -- Simulate attacks
         wait(0.3)
     end
     
@@ -142,7 +136,12 @@ function Boss.AutoFight(boss)
 end
 
 function Boss.GetBossList()
-    return {"Dough King", "Magma Admiral", "Raw Zoan Leader", "Ultimate Mercenary"}
+    return {
+        "Dough King",
+        "Magma Admiral",
+        "Raw Zoan Leader",
+        "Ultimate Mercenary"
+    }
 end
 
 -- =============================================
@@ -151,6 +150,7 @@ end
 local Fruit = {}
 
 function Fruit.GetFruitInBackpack()
+    local player = game.Players.LocalPlayer
     local backpack = player:FindFirstChild("Backpack")
     local fruits = {}
     
@@ -166,6 +166,7 @@ function Fruit.GetFruitInBackpack()
 end
 
 function Fruit.EatFruit(fruitName)
+    local player = game.Players.LocalPlayer
     local backpack = player:FindFirstChild("Backpack")
     
     if not backpack then return false end
@@ -173,6 +174,7 @@ function Fruit.EatFruit(fruitName)
     for _, item in pairs(backpack:GetChildren()) do
         if item.Name == fruitName then
             Logger.Info("Eating fruit:", fruitName)
+            -- Simulate eating
             wait(0.5)
             return true
         end
@@ -198,6 +200,9 @@ end
 local Items = {}
 
 function Items.GetCurrentWeapon()
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    
     if not character then return nil end
     
     for _, item in pairs(character:GetChildren()) do
@@ -210,13 +215,14 @@ function Items.GetCurrentWeapon()
 end
 
 function Items.EquipWeapon(weaponName)
+    local player = game.Players.LocalPlayer
     local backpack = player:FindFirstChild("Backpack")
     
-    if not backpack or not character then return false end
+    if not backpack then return false end
     
     for _, weapon in pairs(backpack:GetChildren()) do
         if weapon.Name == weaponName then
-            weapon.Parent = character
+            weapon.Parent = player.Character
             wait(0.3)
             return true
         end
@@ -226,6 +232,7 @@ function Items.EquipWeapon(weaponName)
 end
 
 function Items.GetAllItems()
+    local player = game.Players.LocalPlayer
     local backpack = player:FindFirstChild("Backpack")
     local items = {}
     
@@ -244,10 +251,9 @@ end
 local Quest = {}
 
 function Quest.GetCurrentQuest()
-    local playerGui = player:FindFirstChild("PlayerGui")
-    if not playerGui then return nil end
+    local player = game.Players.LocalPlayer
+    local questGUI = player:FindFirstChild("PlayerGui"):FindFirstChild("QuestGui")
     
-    local questGUI = playerGui:FindFirstChild("QuestGui")
     if questGUI then
         return "Quest Active"
     end
@@ -257,6 +263,7 @@ end
 
 function Quest.AcceptQuest(questName)
     Logger.Info("Accepting quest:", questName)
+    -- Simulate quest acceptance
     wait(0.5)
     return true
 end
@@ -284,7 +291,10 @@ end
 local Sea = {}
 
 function Sea.GetCurrentSea()
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return 1 end
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    
+    if not character then return 1 end
     
     local pos = character.HumanoidRootPart.Position
     
@@ -299,9 +309,12 @@ end
 
 function Sea.TravelToSea(seaNumber)
     Logger.Info("Traveling to Sea", seaNumber)
+    local player = game.Players.LocalPlayer
+    local character = player.Character
     
     if not character then return false end
     
+    -- Simulate travel
     if seaNumber == 2 then
         character:MoveTo(Vector3.new(500, 50, 5000))
     elseif seaNumber == 3 then
@@ -341,7 +354,7 @@ function ServerHop.JoinServer(serverId)
     local TeleportService = game:GetService("TeleportService")
     local GameId = game.PlaceId
     
-    TeleportService:Teleport(GameId, player, nil, serverId)
+    TeleportService:Teleport(GameId, game.Players.LocalPlayer, nil, serverId)
     return true
 end
 
@@ -366,24 +379,33 @@ print("[BlackKaitun] Team: " .. Config.Team)
 print("[BlackKaitun] FPS Boost: " .. tostring(Config.Configuration.FpsBoost))
 print("===========================================")
 
+-- Load settings
 Settings.Load()
 
+-- Apply FPS boost if enabled
 if Config.Configuration.FpsBoost then
     Logger.Info("Applying FPS boost...")
+    local RunService = game:GetService("RunService")
     RunService:Set3dRenderingEnabled(false)
     wait(0.1)
     RunService:Set3dRenderingEnabled(true)
 end
 
+-- Main loop
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
 local lastUpdate = tick()
 
 RunService.Heartbeat:Connect(function()
     if not player or not player.Character then return end
-    character = player.Character
     
+    -- Update every 5 seconds
     if tick() - lastUpdate < 5 then return end
     lastUpdate = tick()
     
+    -- Auto farm boss if nearby
     if Config.Configuration.HopNear then
         local boss = Boss.GetNearestBoss()
         if boss then
@@ -391,26 +413,29 @@ RunService.Heartbeat:Connect(function()
         end
     end
     
+    -- Auto eat fruit
     if Config.Fruit.EatFruitStore then
         Fruit.AutoEatFruit()
     end
     
+    -- Auto quest
     Quest.AutoQuest()
     
+    -- Server hop if idle
     if Config.Configuration.HopWhenIdle then
+        -- Check if player is idle and hop if needed
         if math.random() > 0.95 then
             ServerHop.HopServer()
         end
     end
 end)
 
+-- Cleanup on death
 player.CharacterAdded:Connect(function(newCharacter)
-    character = newCharacter
     Logger.Info("Character respawned")
 end)
 
 print("===========================================")
 print("[BlackKaitun] Script loaded successfully!")
-print("[BlackKaitun] All modules active!")
 print("[BlackKaitun] Running auto-farming...")
 print("===========================================")

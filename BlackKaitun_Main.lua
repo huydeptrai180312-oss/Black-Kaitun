@@ -1,402 +1,243 @@
--- =============================================
--- BLACK KAITUN - BLOX FRUITS SCRIPT
--- Executor: Synapse X, Script-Ware, Fluxus, etc.
--- =============================================
--- Loadstring: loadstring(game:HttpGet("https://raw.githubusercontent.com/huydeptrai180312-oss/Black-Kaitun/main/BlackKaitun.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/fakekuri/NightXmixother/main/jointeam.lua"))()
 
-local Config = {
-    Team = "Pirates",
-    FPS = 15,
-    Configuration = {
-        HopWhenIdle = true,
-        HopNear = true,
-        FpsBoost = true,
-        blackscreen = false,
-        FastAttackMode = "Remote"
-    },
-    Fruit = {
-        Sniper = true,
-        Fruit = {"Kitsune-Kitsune"},
-        EatFruitStore = false
-    },
-    Items = {
-        AutoFullyMelees = true,
-        Saber = true,
-        CursedDualKatana = true,
-        SoulGuitar = true,
-        RaceV2 = true
-    },
-    Settings = {
-        StayInSea2UntilHaveDarkFragments = false
-    }
-}
+-- local sitink
+local sitinklib = loadstring(game:HttpGet("https://github.com/ErutTheTeru/uilibrary/blob/main/Sitink%20Lib/Source.lua?raw=true"))()
+local Notify = sitinklib:Notify({
+	["Title"] = "Black Kaitun ",
+	["Description"] = "| Make by Shay",
+	["Color"] = Color3.fromRGB(0,0,0, 146.00000649690628, 242.00000077486038),
+	["Content"] = "Load Success!",
+	["Time"] = 1,
+	["Delay"] = 10
+})
+-- Main UI
 
--- =============================================
--- LOGGER MODULE
--- =============================================
-local Logger = {}
-
-function Logger.Info(...)
-    print("[BlackKaitun][INFO]", ...)
-end
-
-function Logger.Warn(...)
-    warn("[BlackKaitun][WARN]", ...)
-end
-
-function Logger.Error(...)
-    warn("[BlackKaitun][ERROR]", ...)
-end
-
--- =============================================
--- SETTINGS MODULE
--- =============================================
-local Settings = {}
-
-function Settings.Load()
-    Logger.Info("Loading settings...")
-    return Config
-end
-
-function Settings.Save(newConfig)
-    Config = newConfig
-    Logger.Info("Settings saved")
-end
-
--- =============================================
--- LEVEL MODULE
--- =============================================
-local Level = {}
-
-function Level.GetCurrentLevel()
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    if not character then return 0 end
-    
-    local humanoid = character:FindFirstChild("Humanoid")
-    return humanoid and humanoid.Health or 0
-end
-
-function Level.GetMaxLevel()
-    return 2400  -- or based on config
-end
-
-function Level.IsMaxLevel()
-    return Level.GetCurrentLevel() >= Level.GetMaxLevel()
-end
-
--- =============================================
--- BOSS MODULE
--- =============================================
-local Boss = {}
-
-function Boss.GetNearestBoss()
-    local enemies = workspace:FindFirstChild("Enemies")
-    if not enemies then return nil end
-    
-    local nearest = nil
-    local distance = math.huge
-    local player = game.Players.LocalPlayer
-    
-    if not player.Character then return nil end
-    
-    for _, enemy in pairs(enemies:GetChildren()) do
-        if enemy:FindFirstChild("Humanoid") and enemy:FindFirstChild("HumanoidRootPart") then
-            local dist = (enemy.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-            if dist < distance and dist < 500 then
-                distance = dist
-                nearest = enemy
-            end
-        end
-    end
-    
-    return nearest
-end
-
-function Boss.AutoFight(boss)
-    if not boss or not boss:FindFirstChild("Humanoid") then return false end
-    
-    Logger.Info("Fighting boss:", boss.Name)
-    local character = game.Players.LocalPlayer.Character
-    if not character then return false end
-    
-    -- Move to boss
-    character:MoveTo(boss.HumanoidRootPart.Position + Vector3.new(5, 0, 5))
-    wait(1)
-    
-    -- Attack sequence
-    for i = 1, 20 do
-        if not boss or boss.Humanoid.Health <= 0 then break end
-        -- Simulate attacks
-        wait(0.3)
-    end
-    
-    Logger.Info("Boss fight completed")
-    return true
-end
-
-function Boss.GetBossList()
-    return {
-        "Dough King",
-        "Magma Admiral",
-        "Raw Zoan Leader",
-        "Ultimate Mercenary"
-    }
-end
-
--- =============================================
--- FRUIT MODULE
--- =============================================
-local Fruit = {}
-
-function Fruit.GetFruitInBackpack()
-    local player = game.Players.LocalPlayer
-    local backpack = player:FindFirstChild("Backpack")
-    local fruits = {}
-    
-    if backpack then
-        for _, item in pairs(backpack:GetChildren()) do
-            if item:FindFirstChild("Fruit") then
-                table.insert(fruits, item.Name)
-            end
-        end
-    end
-    
-    return fruits
-end
-
-function Fruit.EatFruit(fruitName)
-    local player = game.Players.LocalPlayer
-    local backpack = player:FindFirstChild("Backpack")
-    
-    if not backpack then return false end
-    
-    for _, item in pairs(backpack:GetChildren()) do
-        if item.Name == fruitName then
-            Logger.Info("Eating fruit:", fruitName)
-            -- Simulate eating
-            wait(0.5)
-            return true
-        end
-    end
-    
-    return false
-end
-
-function Fruit.AutoEatFruit()
-    if not Config.Fruit.EatFruitStore then return end
-    
-    local fruits = Fruit.GetFruitInBackpack()
-    for _, fruit in pairs(fruits) do
-        if table.find(Config.Fruit.Fruit, fruit) then
-            Fruit.EatFruit(fruit)
-        end
-    end
-end
-
--- =============================================
--- ITEMS MODULE
--- =============================================
-local Items = {}
-
-function Items.GetCurrentWeapon()
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    
-    if not character then return nil end
-    
-    for _, item in pairs(character:GetChildren()) do
-        if item:IsA("Tool") then
-            return item
-        end
-    end
-    
-    return nil
-end
-
-function Items.EquipWeapon(weaponName)
-    local player = game.Players.LocalPlayer
-    local backpack = player:FindFirstChild("Backpack")
-    
-    if not backpack then return false end
-    
-    for _, weapon in pairs(backpack:GetChildren()) do
-        if weapon.Name == weaponName then
-            weapon.Parent = player.Character
-            wait(0.3)
-            return true
-        end
-    end
-    
-    return false
-end
-
-function Items.GetAllItems()
-    local player = game.Players.LocalPlayer
-    local backpack = player:FindFirstChild("Backpack")
-    local items = {}
-    
-    if backpack then
-        for _, item in pairs(backpack:GetChildren()) do
-            table.insert(items, item.Name)
-        end
-    end
-    
-    return items
-end
-
--- =============================================
--- QUEST MODULE
--- =============================================
-local Quest = {}
-
-function Quest.GetCurrentQuest()
-    local player = game.Players.LocalPlayer
-    local questGUI = player:FindFirstChild("PlayerGui"):FindFirstChild("QuestGui")
-    
-    if questGUI then
-        return "Quest Active"
-    end
-    
-    return nil
-end
-
-function Quest.AcceptQuest(questName)
-    Logger.Info("Accepting quest:", questName)
-    -- Simulate quest acceptance
-    wait(0.5)
-    return true
-end
-
-function Quest.CompleteQuest()
-    Logger.Info("Completing current quest")
-    wait(2)
-    return true
-end
-
-function Quest.AutoQuest()
-    local currentQuest = Quest.GetCurrentQuest()
-    
-    if not currentQuest then
-        Logger.Info("No active quest, finding new one...")
-        Quest.AcceptQuest("Default Quest")
-    end
-    
-    wait(5)
-end
-
--- =============================================
--- SEA MODULE
--- =============================================
-local Sea = {}
-
-function Sea.GetCurrentSea()
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    
-    if not character then return 1 end
-    
-    local pos = character.HumanoidRootPart.Position
-    
-    if pos.Z > 10000 then
-        return 3
-    elseif pos.Z > 0 then
-        return 2
-    else
-        return 1
-    end
-end
-
-function Sea.TravelToSea(seaNumber)
-    Logger.Info("Traveling to Sea", seaNumber)
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    
-    if not character then return false end
-    
-    -- Simulate travel
-    if seaNumber == 2 then
-        character:MoveTo(Vector3.new(500, 50, 5000))
-    elseif seaNumber == 3 then
-        character:MoveTo(Vector3.new(500, 50, 15000))
-    end
-    
-    wait(5)
-    return true
-end
-
--- =============================================
--- SERVER HOP MODULE
--- =============================================
-local ServerHop = {}
-
-function ServerHop.GetServerList()
-    local servers = {}
-    local success, result = pcall(function()
-        local response = game:HttpGet("https://games.roblox.com/v1/games/2753915549/servers/Public?sortOrder=Asc&limit=100")
-        return game:GetService("HttpService"):JSONDecode(response)
-    end)
-    
-    if success and result and result.data then
-        for _, server in pairs(result.data) do
-            table.insert(servers, server.id)
-        end
-    end
-    
-    return servers
-end
-
-function ServerHop.JoinServer(serverId)
-    if not serverId then return false end
-    
-    Logger.Info("Joining server:", serverId)
-    
-    local TeleportService = game:GetService("TeleportService")
-    local GameId = game.PlaceId
-    
-    TeleportService:Teleport(GameId, game.Players.LocalPlayer, nil, serverId)
-    return true
-end
-
-function ServerHop.HopServer()
-    if not Config.Configuration.HopNear then return end
-    
-    Logger.Info("Hopping to new server...")
-    local servers = ServerHop.GetServerList()
-    
-    if #servers > 0 then
-        ServerHop.JoinServer(servers[math.random(#servers)])
-    end
-end
-
--- =============================================
--- MAIN SCRIPT EXECUTION
--- =============================================
-
-print("===========================================")
-print("[BlackKaitun] Script Initializing...")
-print("[BlackKaitun] Team: " .. Config.Team)
-print("[BlackKaitun] FPS Boost: " .. tostring(Config.Configuration.FpsBoost))
-print("===========================================")
-
--- Load settings
-Settings.Load()
-
--- Apply FPS boost if enabled
-if Config.Configuration.FpsBoost then
-    Logger.Info("Applying FPS boost...")
-    local RunService = game:GetService("RunService")
-    RunService:Set3dRenderingEnabled(false)
-    wait(0.1)
-    RunService:Set3dRenderingEnabled(true)
-end
-
--- Main loop
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 
-local player = Players.LocalPlayer
-local lastUpdate = tick()
+local blur = Instance.new("BlurEffect")
+blur.Size = 20
+blur.Parent = Lighting
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SkullHubUI"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = CoreGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(1, 0, 1, 0)
+mainFrame.BackgroundTransparency = 1
+mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+mainFrame.Parent = screenGui
+
+local compactButton = Instance.new("TextButton")
+compactButton.Size = UDim2.new(0, 60, 0, 60)
+compactButton.Position = UDim2.new(0.5, -30, 0, -80)
+compactButton.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+compactButton.Text = "▲"
+compactButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+compactButton.Font = Enum.Font.FredokaOne
+compactButton.TextSize = 24
+compactButton.Visible = false
+compactButton.Parent = mainFrame
+
+local compactCorner = Instance.new("UICorner")
+compactCorner.CornerRadius = UDim.new(1, 0)
+compactCorner.Parent = compactButton
+
+local compactStroke = Instance.new("UIStroke")
+compactStroke.Thickness = 2
+compactStroke.Color = Color3.fromRGB(72, 138, 182)
+compactStroke.Transparency = 0.3
+compactStroke.Parent = compactButton
+
+local uiContainer = Instance.new("Frame")
+uiContainer.Size = UDim2.new(0, 450, 0, 240)
+uiContainer.Position = UDim2.new(0.5, -225, 1, 100)
+uiContainer.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+uiContainer.BackgroundTransparency = 0.1
+uiContainer.Parent = mainFrame
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 16)
+corner.Parent = uiContainer
+
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(255,255,255)
+stroke.Transparency = 0.3
+stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+stroke.Parent = uiContainer
+
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(72, 138, 182)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 35, 35))
+})
+gradient.Rotation = 45
+gradient.Parent = uiContainer
+
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Size = UDim2.new(0, 30, 0, 30)
+minimizeButton.Position = UDim2.new(1, -40, 0, 10)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+minimizeButton.Text = "-"
+minimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeButton.Font = Enum.Font.FredokaOne
+minimizeButton.TextSize = 20
+minimizeButton.Parent = uiContainer
+
+local minimizeCorner = Instance.new("UICorner")
+minimizeCorner.CornerRadius = UDim.new(0, 8)
+minimizeCorner.Parent = minimizeButton
+
+local icon = Instance.new("ImageLabel")
+icon.Size = UDim2.new(0, 64, 0, 64)
+icon.Position = UDim2.new(0.5, -32, 0, 16)
+icon.BackgroundTransparency = 1
+icon.Image = "rbxassetid://93951724347885 "
+icon.Parent = uiContainer
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -20, 0, 40)
+title.Position = UDim2.new(0, 10, 0, 90)
+title.BackgroundTransparency = 1
+title.Text = "Kaitun BF is Running"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.FredokaOne
+title.TextSize = 32
+title.TextXAlignment = Enum.TextXAlignment.Center
+title.Parent = uiContainer
+
+local desc = Instance.new("TextLabel")
+desc.Size = UDim2.new(1, -40, 0, 60)
+desc.Position = UDim2.new(0, 20, 0, 140)
+desc.BackgroundTransparency = 1
+desc.Text = "HNC rác"
+desc.TextColor3 = Color3.fromRGB(180, 180, 180)
+desc.Font = Enum.Font.FredokaOne
+desc.TextSize = 16
+desc.TextWrapped = true
+desc.TextYAlignment = Enum.TextYAlignment.Top
+desc.TextXAlignment = Enum.TextXAlignment.Center
+desc.Parent = uiContainer
+
+local isMinimized = false
+
+local function toggleMinimize()
+    isMinimized = not isMinimized
+    
+    if isMinimized then
+        -- Minimize animation
+        TweenService:Create(uiContainer, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+            Position = UDim2.new(0.5, -225, 0, -300),
+            Size = UDim2.new(0, 450, 0, 0)
+        }):Play()
+        
+        TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+            BackgroundTransparency = 1
+        }):Play()
+        
+        task.wait(0.2)
+        compactButton.Visible = true
+        TweenService:Create(compactButton, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0.5, -30, 0, 10)
+        }):Play()
+        
+        blur.Size = 0
+        minimizeButton.Text = "+"
+    else
+        -- Maximize animation
+        TweenService:Create(compactButton, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+            Position = UDim2.new(0.5, -30, 0, -80)
+        }):Play()
+        
+        task.wait(0.2)
+        compactButton.Visible = false
+        
+        TweenService:Create(uiContainer, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0.5, -225, 0.5, -120),
+            Size = UDim2.new(0, 450, 0, 240)
+        }):Play()
+        
+        TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+            BackgroundTransparency = 0.4
+        }):Play()
+        
+        blur.Size = 20
+        minimizeButton.Text = "-"
+    end
+end
+
+minimizeButton.MouseButton1Click:Connect(toggleMinimize)
+compactButton.MouseButton1Click:Connect(toggleMinimize)
+
+task.wait(0.1)
+
+TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+    BackgroundTransparency = 0.4
+}):Play()
+
+TweenService:Create(uiContainer, TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Position = UDim2.new(0.5, -225, 0.5, -120)
+}):Play()
+
+-- Auto Detection
+spawn(function()
+		pcall(function()
+			while wait() do
+				if _G.XERUNKAITUN and World1 then
+					if game.Players.LocalPlayer.Data.Level.Value >= 311 then
+						_G.AutoPlayerHunter = false
+					end
+				end
+			end
+		end)
+	end)
+
+if game.PlaceId == 2753915549 then
+    World1 = true
+elseif game.PlaceId == 4442272183 then
+    World2 = true
+elseif game.PlaceId == 7449423635 then
+    World3 = true
+end
+
+-- Load the comprehensive farming system
+_G.XERUNKAITUN = true
+_G.AutoFarm = true
+_G.FastFarmMode = true
+_G.BringMode = 300
+_G.AUTOHAKI = true
+_G.BringMonster = true
+_G.AutoSetSpawn = true
+_G.AutoSuperhuman = true
+_G.AutoBuyLegendarySword = true
+_G.AutoBringFruit = true
+_G.AutoStoreSsFruit = true
+_G.Remove_trct = true
+getgenv().AutoRejoin = true
+getgenv().remove = true
+getgenv().removeheavy = true
+getgenv().DisnableDame = true
+_G.RemoveHit = true
+_G.BuyAllAib = true
+_G.BuyAllSword = true
+_G.AutoSelectDungeon = true
+_G.AutoBuyChip = true
+_G.Auto_StartRaid = true
+_G.Kill_Aura = true
+_G.Auto_Dungeon = true
+_G.Dun = true
+
+print("[Kaitun] Complete Automation System Loaded Successfully!")
+print("[Kaitun] Auto Farm: ENABLED")
+print("[Kaitun] Auto Haki: ENABLED")
+print("[Kaitun] Monster Bring: ENABLED")
+print("[Kaitun] Raid System: ENABLED")
 
 RunService.Heartbeat:Connect(function()
     if not player or not player.Character then return end

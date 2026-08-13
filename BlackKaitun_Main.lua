@@ -1,8 +1,4 @@
-pcall(function()
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/fakekuri/NightXmixother/main/jointeam.lua"))()
-end)
-
--- Simple Notification
+-- External helper script removed to avoid nil errors from unstable remote code.
 print("==============================================")
 print("[Black Kaitun] Script Loaded Successfully!")
 print("[Black Kaitun] Auto Farm System: ENABLED")

@@ -1,15 +1,12 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/fakekuri/NightXmixother/main/jointeam.lua"))()
+pcall(function()
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/fakekuri/NightXmixother/main/jointeam.lua"))()
+end)
 
--- local sitink
-local sitinklib = loadstring(game:HttpGet("https://github.com/ErutTheTeru/uilibrary/blob/main/Sitink%20Lib/Source.lua?raw=true"))()
-local Notify = sitinklib:Notify({
-	["Title"] = "Black Kaitun",
-	["Description"] = "| Make by Shay",
-	["Color"] = Color3.fromRGB(0,0,0, 146.00000649690628, 242.00000077486038),
-	["Content"] = "Load Success!",
-	["Time"] = 1,
-	["Delay"] = 10
-})
+-- Simple Notification
+print("==============================================")
+print("[Black Kaitun] Script Loaded Successfully!")
+print("[Black Kaitun] Auto Farm System: ENABLED")
+print("==============================================")
 -- Main UI
 
 local Players = game:GetService("Players")

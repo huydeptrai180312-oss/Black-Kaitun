@@ -11,15 +11,12 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+-- ===== SAFE HELPER FUNCTIONS =====
 local function getPlayerGuiMain()
     local player = Players.LocalPlayer
-    if not player then
-        return nil
-    end
+    if not player then return nil end
     local playerGui = player:FindFirstChild("PlayerGui")
-    if not playerGui then
-        return nil
-    end
+    if not playerGui then return nil end
     return playerGui:FindFirstChild("Main")
 end
 
@@ -61,9 +58,7 @@ local function safeCall(name, func, fallback)
 end
 
 local function safeFind(parent, childName)
-    if not parent then
-        return nil
-    end
+    if not parent then return nil end
     local ok, result = pcall(function()
         if parent:FindFirstChild then
             return parent:FindFirstChild(childName)
@@ -73,6 +68,36 @@ local function safeFind(parent, childName)
     if ok then
         return result
     end
+    return nil
+end
+
+-- Safe remote call wrapper
+local function safeRemoteCall(methodName, ...)
+    local ok, result = pcall(function()
+        local remote = ReplicatedStorage:FindFirstChild("Remotes")
+        if not remote then return nil end
+        local commF = remote:FindFirstChild("CommF_")
+        if not commF then return nil end
+        return commF:InvokeServer(methodName, ...)
+    end)
+    if not ok then
+        warn("[BlackKaitun] Remote call failed: " .. methodName)
+        return nil
+    end
+    return result
+end
+
+-- Safe object existence check
+local function safeGetObject(path)
+    local ok, result = pcall(function()
+        local current = Workspace
+        for part in path:gmatch("[^%.]+") do
+            if not current then return nil end
+            current = current:FindFirstChild(part)
+        end
+        return current
+    end)
+    if ok then return result end
     return nil
 end
 
@@ -1834,58 +1859,111 @@ spawn(function()
 end)
 
 function Click()
-    game:GetService'VirtualUser':CaptureController()
-    game:GetService'VirtualUser':Button1Down(Vector2.new(1280, 672))
+    pcall(function()
+        local virtualUser = game:GetService'VirtualUser'
+        if virtualUser then
+            virtualUser:CaptureController()
+            virtualUser:Button1Down(Vector2.new(1280, 672))
+        end
+    end)
 end
 
 function AutoHaki()
-    if not game:GetService("Players").LocalPlayer.Character:FindFirstChild("HasBuso") then
-        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("Buso")
-    end
+    safeCall("AutoHaki", function()
+        local player = Players.LocalPlayer
+        if not player or not player.Character then return end
+        if not player.Character:FindFirstChild("HasBuso") then
+            safeRemoteCall("Buso")
+        end
+    end)
 end
 
 function UnEquipWeapon(Weapon)
-    if game.Players.LocalPlayer.Character:FindFirstChild(Weapon) then
-        _G.NotAutoEquip = true
-        wait(.5)
-        game.Players.LocalPlayer.Character:FindFirstChild(Weapon).Parent = game.Players.LocalPlayer.Backpack
-        wait(.1)
-        _G.NotAutoEquip = false
-    end
+    safeCall("UnEquipWeapon", function()
+        local player = Players.LocalPlayer
+        if not player or not player.Character or not player.Backpack then return end
+        local weapon = player.Character:FindFirstChild(Weapon)
+        if weapon then
+            _G.NotAutoEquip = true
+            wait(.5)
+            weapon.Parent = player.Backpack
+            wait(.1)
+            _G.NotAutoEquip = false
+        end
+    end)
 end
 
 function EquipWeapon(ToolSe)
-    if not _G.NotAutoEquip then
-        if game.Players.LocalPlayer.Backpack:FindFirstChild(ToolSe) then
-            Tool = game.Players.LocalPlayer.Backpack:FindFirstChild(ToolSe)
+    safeCall("EquipWeapon", function()
+        if _G.NotAutoEquip then return end
+        local player = Players.LocalPlayer
+        if not player or not player.Backpack or not player.Character then return end
+        local tool = player.Backpack:FindFirstChild(ToolSe)
+        if tool and player.Character:FindFirstChild("Humanoid") then
             wait(.1)
-            game.Players.LocalPlayer.Character.Humanoid:EquipTool(Tool)
+            player.Character.Humanoid:EquipTool(tool)
         end
-    end
+    end)
 end
 
 function BTP(p)
-    pcall(function()
-        if (p.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude >= 1500 and not Auto_Raid and game.Players.LocalPlayer.Character.Humanoid.Health > 0 then
-            repeat wait()
-                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = p
-                wait(.05)
-                game.Players.LocalPlayer.Character.Head:Destroy()
-                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = p
-            until (p.Position-game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 1500 and game.Players.LocalPlayer.Character.Humanoid.Health > 0
+    safeCall("BTP", function()
+        if not p then return end
+        local player = Players.LocalPlayer
+        if not player or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+        
+        local hrp = player.Character.HumanoidRootPart
+        local humanoid = player.Character:FindFirstChild("Humanoid")
+        
+        if not humanoid or humanoid.Health <= 0 then return end
+        if Auto_Raid then return end
+        
+        if (p.Position - hrp.Position).Magnitude >= 1500 then
+            repeat
+                wait()
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    hrp.CFrame = p
+                    wait(.05)
+                    if player.Character:FindFirstChild("Head") then
+                        player.Character.Head:Destroy()
+                    end
+                    hrp.CFrame = p
+                end
+            until (p.Position - hrp.Position).Magnitude < 1500 and humanoid.Health > 0
         end
     end)
 end
 
 function TelePPlayer(P)
-game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = P
+    safeCall("TelePPlayer", function()
+        local player = Players.LocalPlayer
+        if not player or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+        if P then
+            player.Character.HumanoidRootPart.CFrame = P
+        end
+    end)
 end
 
 function ATween(Pos)
-    Distance = (Pos.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-    if game.Players.LocalPlayer.Character.Humanoid.Sit == true then game.Players.LocalPlayer.Character.Humanoid.Sit = false end
-    pcall(function() tween = game:GetService("TweenService"):Create(game.Players.LocalPlayer.Character.HumanoidRootPart,TweenInfo.new(Distance/210, Enum.EasingStyle.Linear),{CFrame = Pos}) end)
-    tween:Play()
+    safeCall("ATween", function()
+        if not Pos then return end
+        local player = Players.LocalPlayer
+        if not player or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
+        
+        local hrp = player.Character.HumanoidRootPart
+        local humanoid = player.Character:FindFirstChild("Humanoid")
+        
+        Distance = (Pos.Position - hrp.Position).Magnitude
+        if humanoid and humanoid.Sit == true then humanoid.Sit = false end
+        
+        local tweenInfo = TweenInfo.new(Distance/210, Enum.EasingStyle.Linear)
+        local tweenObj = TweenService:Create(hrp, tweenInfo, {CFrame = Pos})
+        if tweenObj then
+            tween = tweenObj
+            tween:Play()
+        end
+    end)
+end
     if Distance <= 250 then
         tween:Cancel()
         game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = Pos
@@ -1896,34 +1974,57 @@ function ATween(Pos)
     end
 end
 function TPB(CFgo)
-local tween_s = game:service"TweenService"
-local info = TweenInfo.new((game:GetService("Workspace").Boats.PirateBrigade.VehicleSeat.CFrame.Position - CFgo.Position).Magnitude/300, Enum.EasingStyle.Linear)
-tween = tween_s:Create(game:GetService("Workspace").Boats.PirateBrigade.VehicleSeat, info, {CFrame = CFgo})
-tween:Play()
-
-local tweenfunc = {}
-
-function tweenfunc:Stop()
-    tween:Cancel()
-end
-
-return tweenfunc
+    safeCall("TPB", function()
+        if not CFgo then return end
+        local ws = Workspace
+        if not ws then return end
+        
+        local boats = ws:FindFirstChild("Boats")
+        if not boats then return end
+        
+        local pirateBrigade = boats:FindFirstChild("PirateBrigade")
+        if not pirateBrigade then return end
+        
+        local vehicleSeat = pirateBrigade:FindFirstChild("VehicleSeat")
+        if not vehicleSeat then return end
+        
+        local distance = (vehicleSeat.CFrame.Position - CFgo.Position).Magnitude / 300
+        local tweenInfo = TweenInfo.new(distance, Enum.EasingStyle.Linear)
+        local tweenObj = TweenService:Create(vehicleSeat, tweenInfo, {CFrame = CFgo})
+        
+        if tweenObj then
+            tweenObj:Play()
+            tween = tweenObj
+        end
+    end)
 end
 
 function TPP(CFgo)
-if game.Players.LocalPlayer.Character:WaitForChild("Humanoid").Health <= 0 or not game:GetService("Players").LocalPlayer.Character:WaitForChild("Humanoid") then tween:Cancel() repeat wait() until game:GetService("Players").LocalPlayer.Character:WaitForChild("Humanoid") and game:GetService("Players").LocalPlayer.Character:WaitForChild("Humanoid").Health > 0 wait(7) return end
-local tween_s = game:service"TweenService"
-local info = TweenInfo.new((game:GetService("Players")["LocalPlayer"].Character.HumanoidRootPart.Position - CFgo.Position).Magnitude/325, Enum.EasingStyle.Linear)
-tween = tween_s:Create(game.Players.LocalPlayer.Character["HumanoidRootPart"], info, {CFrame = CFgo})
-tween:Play()
-
-local tweenfunc = {}
-
-function tweenfunc:Stop()
-    tween:Cancel()
-end
-
-return tweenfunc
+    safeCall("TPP", function()
+        if not CFgo then return end
+        local player = Players.LocalPlayer
+        if not player or not player.Character then return end
+        
+        local humanoid = player.Character:FindFirstChild("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then
+            if tween then tween:Cancel() end
+            repeat wait() until humanoid and humanoid.Health > 0
+            wait(7)
+            return
+        end
+        
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        local distance = (hrp.Position - CFgo.Position).Magnitude / 325
+        local tweenInfo = TweenInfo.new(distance, Enum.EasingStyle.Linear)
+        local tweenObj = TweenService:Create(hrp, tweenInfo, {CFrame = CFgo})
+        
+        if tweenObj then
+            tweenObj:Play()
+            tween = tweenObj
+        end
+    end)
 end
 
 Type = 1
@@ -2303,16 +2404,15 @@ FarmMode = FarmMode or "Quest"
 spawn(function()
     while wait() do
         if FarmMode == "Quest" and _G.AutoFarm then
-            pcall(function()
+            safeCall("FarmMode_Quest", function()
                 local questVisible, questTitleText = safeQuestInfo()
                 if not questVisible and questTitleText == "" then
-                    -- Quest UI hasn't loaded yet; skip safely instead of crashing.
                     return
                 end
 
-                if not string.find(questTitleText, NameMon) then
+                if not string.find(questTitleText, NameMon or "") then
                     StartMagnet = false
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AbandonQuest")
+                    safeRemoteCall("AbandonQuest")
                 end
 
                 local mainGui = getPlayerGuiMain()
@@ -2325,41 +2425,61 @@ spawn(function()
                     StartMagnet = false
                     CheckQuest()
                     if BypassTP then
-                        if (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude > 1500 then
-                            BTP(CFrameQuest)
-                        elseif (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude < 1500 then
-                            ATween(CFrameQuest)
+                        local player = Players.LocalPlayer
+                        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local hrp = player.Character.HumanoidRootPart
+                            if (hrp.Position - CFrameQuest.Position).Magnitude > 1500 then
+                                BTP(CFrameQuest)
+                            elseif (hrp.Position - CFrameQuest.Position).Magnitude < 1500 then
+                                ATween(CFrameQuest)
+                            end
                         end
                     else
                         ATween(CFrameQuest)
                     end
-                    if (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude <= 5 then
-                        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest",NameQuest,LevelQuest)
+                    
+                    local player = Players.LocalPlayer
+                    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        if (player.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude <= 5 then
+                            safeRemoteCall("StartQuest", NameQuest or "", LevelQuest or 1)
+                        end
                     end
                 elseif questGui.Visible == true then
                     CheckQuest()
-                    if game:GetService("Workspace").Enemies:FindFirstChild(Mon) then
-                        for i,v in pairs(game:GetService("Workspace").Enemies:GetChildren()) do
-                            if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-                                if v.Name == Mon then
+                    local ws = Workspace
+                    local enemies = ws and ws:FindFirstChild("Enemies")
+                    if enemies and enemies:FindFirstChild(Mon or "") then
+                        for i,v in pairs(enemies:GetChildren()) do
+                            if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") then
+                                local humanoid = v.Humanoid
+                                if humanoid and humanoid.Health > 0 and v.Name == Mon then
                                     local currentQuestVisible, currentQuestTitleText = safeQuestInfo()
-                                    if currentQuestVisible and string.find(currentQuestTitleText, NameMon) then
-                                        repeat task.wait()
+                                    if currentQuestVisible and string.find(currentQuestTitleText or "", NameMon or "") then
+                                        repeat 
+                                            task.wait()
                                             EquipWeapon(_G.SelectWeapon)
                                             AutoHaki()
-                                            PosMon = v.HumanoidRootPart.CFrame
-                                            ATween(v.HumanoidRootPart.CFrame * Pos)
-                                            v.HumanoidRootPart.CanCollide = false
-                                            v.Humanoid.WalkSpeed = 0
-                                            v.Head.CanCollide = false
-                                            v.HumanoidRootPart.Size = Vector3.new(70,70,70)
-                                            StartMagnet = true
-                                            game:GetService'VirtualUser':CaptureController()
-                                            game:GetService'VirtualUser':Button1Down(Vector2.new(1280, 672))
-                                        until not _G.AutoFarm or v.Humanoid.Health <= 0 or not v.Parent or not (getPlayerGuiMain() and getPlayerGuiMain():FindFirstChild("Quest") and getPlayerGuiMain().Quest.Visible == true)
+                                            if v and v:FindFirstChild("HumanoidRootPart") then
+                                                PosMon = v.HumanoidRootPart.CFrame
+                                                ATween(v.HumanoidRootPart.CFrame * (Pos or CFrame.new(0,0,0)))
+                                                v.HumanoidRootPart.CanCollide = false
+                                                if v:FindFirstChild("Humanoid") then
+                                                    v.Humanoid.WalkSpeed = 0
+                                                end
+                                                if v:FindFirstChild("Head") then
+                                                    v.Head.CanCollide = false
+                                                end
+                                                v.HumanoidRootPart.Size = Vector3.new(70,70,70)
+                                                StartMagnet = true
+                                                pcall(function()
+                                                    game:GetService'VirtualUser':CaptureController()
+                                                    game:GetService'VirtualUser':Button1Down(Vector2.new(1280, 672))
+                                                end)
+                                            end
+                                        until not _G.AutoFarm or not v or not v.Parent or v.Humanoid.Health <= 0 or not (getPlayerGuiMain() and getPlayerGuiMain():FindFirstChild("Quest") and getPlayerGuiMain().Quest.Visible == true)
                                     else
                                         StartMagnet = false
-                                        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AbandonQuest")
+                                        safeRemoteCall("AbandonQuest")
                                     end
                                 end
                             end
@@ -2368,8 +2488,12 @@ spawn(function()
                         ATween(CFrameMon)
                         UnEquipWeapon(_G.SelectWeapon)
                         StartMagnet = false
-                        if game:GetService("ReplicatedStorage"):FindFirstChild(Mon) then
-                            ATween(game:GetService("ReplicatedStorage"):FindFirstChild(Mon).HumanoidRootPart.CFrame * CFrame.new(15,10,2))
+                        local rs = ReplicatedStorage
+                        if rs then
+                            local mon = rs:FindFirstChild(Mon or "")
+                            if mon and mon:FindFirstChild("HumanoidRootPart") then
+                                ATween(mon.HumanoidRootPart.CFrame * CFrame.new(15,10,2))
+                            end
                         end
                     end
                 end
@@ -2380,15 +2504,15 @@ end)
 spawn(function()
     while wait() do
         if FarmMode == "No Quest" and _G.AutoFarm then
-            pcall(function()
+            safeCall("FarmMode_NoQuest", function()
                 local questVisible, questTitleText = safeQuestInfo()
                 if not questVisible and questTitleText == "" then
                     return
                 end
 
-                if not string.find(questTitleText, NameMon) then
+                if not string.find(questTitleText or "", NameMon or "") then
                     StartMagnet = false
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AbandonQuest")
+                    safeRemoteCall("AbandonQuest")
                 end
 
                 local mainGui = getPlayerGuiMain()
@@ -2400,12 +2524,16 @@ spawn(function()
                 if questGui.Visible == false then
                     StartMagnet = false
                     CheckQuest()
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest",NameQuest,LevelQuest)
+                    safeRemoteCall("StartQuest", NameQuest or "", LevelQuest or 1)
                     if BypassTP then
-                        if (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameMon.Position).Magnitude > 1500 then
-                            BTP(CFrameMon)
-                        elseif (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameMon.Position).Magnitude < 1500 then
-                            ATween(CFrameMon)
+                        local player = Players.LocalPlayer
+                        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local hrp = player.Character.HumanoidRootPart
+                            if (hrp.Position - CFrameMon.Position).Magnitude > 1500 then
+                                BTP(CFrameMon)
+                            elseif (hrp.Position - CFrameMon.Position).Magnitude < 1500 then
+                                ATween(CFrameMon)
+                            end
                         end
                     else
                         ATween(CFrameMon)

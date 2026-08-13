@@ -11,6 +11,44 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local function getPlayerGuiMain()
+    local player = Players.LocalPlayer
+    if not player then
+        return nil
+    end
+    local playerGui = player:FindFirstChild("PlayerGui")
+    if not playerGui then
+        return nil
+    end
+    return playerGui:FindFirstChild("Main")
+end
+
+local function safeQuestInfo()
+    local mainGui = getPlayerGuiMain()
+    if not mainGui then
+        return false, "", nil
+    end
+
+    local quest = mainGui:FindFirstChild("Quest")
+    if not quest then
+        return false, "", nil
+    end
+
+    local titleText = ""
+    local container = quest:FindFirstChild("Container")
+    if container then
+        local questTitle = container:FindFirstChild("QuestTitle")
+        if questTitle then
+            local title = questTitle:FindFirstChild("Title")
+            if title then
+                titleText = tostring(title.Text or "")
+            end
+        end
+    end
+
+    return quest.Visible == true, titleText, quest
+end
+
 local function safeCall(name, func, fallback)
     local ok, result = xpcall(func, function(err)
         warn("[BlackKaitun][" .. name .. "] " .. tostring(err))
@@ -2266,36 +2304,49 @@ spawn(function()
     while wait() do
         if FarmMode == "Quest" and _G.AutoFarm then
             pcall(function()
-                local QuestTitle = game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text
-                if not string.find(QuestTitle, NameMon) then
+                local questVisible, questTitleText = safeQuestInfo()
+                if not questVisible and questTitleText == "" then
+                    -- Quest UI hasn't loaded yet; skip safely instead of crashing.
+                    return
+                end
+
+                if not string.find(questTitleText, NameMon) then
                     StartMagnet = false
                     game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AbandonQuest")
                 end
-                if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false then
+
+                local mainGui = getPlayerGuiMain()
+                local questGui = mainGui and mainGui:FindFirstChild("Quest")
+                if not questGui then
+                    return
+                end
+
+                if questGui.Visible == false then
                     StartMagnet = false
                     CheckQuest()
                     if BypassTP then
-                    if (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude > 1500 then
-                    BTP(CFrameQuest)
-                    elseif (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude < 1500 then
-                    ATween(CFrameQuest)
+                        if (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude > 1500 then
+                            BTP(CFrameQuest)
+                        elseif (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude < 1500 then
+                            ATween(CFrameQuest)
+                        end
+                    else
+                        ATween(CFrameQuest)
                     end
-                else
-                    ATween(CFrameQuest)
-                end
-                if (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude <= 5 then
-                    game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest",NameQuest,LevelQuest)
+                    if (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameQuest.Position).Magnitude <= 5 then
+                        game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest",NameQuest,LevelQuest)
                     end
-                elseif game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == true then
+                elseif questGui.Visible == true then
                     CheckQuest()
                     if game:GetService("Workspace").Enemies:FindFirstChild(Mon) then
                         for i,v in pairs(game:GetService("Workspace").Enemies:GetChildren()) do
                             if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
                                 if v.Name == Mon then
-                                    if string.find(game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text, NameMon) then
+                                    local currentQuestVisible, currentQuestTitleText = safeQuestInfo()
+                                    if currentQuestVisible and string.find(currentQuestTitleText, NameMon) then
                                         repeat task.wait()
                                             EquipWeapon(_G.SelectWeapon)
-                                            AutoHaki()                                            
+                                            AutoHaki()
                                             PosMon = v.HumanoidRootPart.CFrame
                                             ATween(v.HumanoidRootPart.CFrame * Pos)
                                             v.HumanoidRootPart.CanCollide = false
@@ -2305,7 +2356,7 @@ spawn(function()
                                             StartMagnet = true
                                             game:GetService'VirtualUser':CaptureController()
                                             game:GetService'VirtualUser':Button1Down(Vector2.new(1280, 672))
-                                        until not _G.AutoFarm or v.Humanoid.Health <= 0 or not v.Parent or game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false
+                                        until not _G.AutoFarm or v.Humanoid.Health <= 0 or not v.Parent or not (getPlayerGuiMain() and getPlayerGuiMain():FindFirstChild("Quest") and getPlayerGuiMain().Quest.Visible == true)
                                     else
                                         StartMagnet = false
                                         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AbandonQuest")
@@ -2318,7 +2369,7 @@ spawn(function()
                         UnEquipWeapon(_G.SelectWeapon)
                         StartMagnet = false
                         if game:GetService("ReplicatedStorage"):FindFirstChild(Mon) then
-                         ATween(game:GetService("ReplicatedStorage"):FindFirstChild(Mon).HumanoidRootPart.CFrame * CFrame.new(15,10,2))
+                            ATween(game:GetService("ReplicatedStorage"):FindFirstChild(Mon).HumanoidRootPart.CFrame * CFrame.new(15,10,2))
                         end
                     end
                 end
@@ -2330,34 +2381,46 @@ spawn(function()
     while wait() do
         if FarmMode == "No Quest" and _G.AutoFarm then
             pcall(function()
-                local QuestTitle = game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text
-                if not string.find(QuestTitle, NameMon) then
+                local questVisible, questTitleText = safeQuestInfo()
+                if not questVisible and questTitleText == "" then
+                    return
+                end
+
+                if not string.find(questTitleText, NameMon) then
                     StartMagnet = false
                     game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AbandonQuest")
                 end
-                if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false then
+
+                local mainGui = getPlayerGuiMain()
+                local questGui = mainGui and mainGui:FindFirstChild("Quest")
+                if not questGui then
+                    return
+                end
+
+                if questGui.Visible == false then
                     StartMagnet = false
                     CheckQuest()
                     game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest",NameQuest,LevelQuest)
                     if BypassTP then
-                    if (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameMon.Position).Magnitude > 1500 then
-                    BTP(CFrameMon)
-                    elseif (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameMon.Position).Magnitude < 1500 then
-                    ATween(CFrameMon)
+                        if (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameMon.Position).Magnitude > 1500 then
+                            BTP(CFrameMon)
+                        elseif (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - CFrameMon.Position).Magnitude < 1500 then
+                            ATween(CFrameMon)
+                        end
+                    else
+                        ATween(CFrameMon)
                     end
-                else
-                    ATween(CFrameMon)
-                end
-                elseif game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == true then
+                elseif questGui.Visible == true then
                     CheckQuest()
                     if game:GetService("Workspace").Enemies:FindFirstChild(Mon) then
                         for i,v in pairs(game:GetService("Workspace").Enemies:GetChildren()) do
                             if v:FindFirstChild("HumanoidRootPart") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
                                 if v.Name == Mon then
-                                    if string.find(game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text, NameMon) then
+                                    local currentQuestVisible, currentQuestTitleText = safeQuestInfo()
+                                    if currentQuestVisible and string.find(currentQuestTitleText, NameMon) then
                                         repeat task.wait()
                                             EquipWeapon(_G.SelectWeapon)
-                                            AutoHaki()                                            
+                                            AutoHaki()
                                             PosMon = v.HumanoidRootPart.CFrame
                                             ATween(v.HumanoidRootPart.CFrame * Pos)
                                             v.HumanoidRootPart.CanCollide = false
@@ -2367,7 +2430,7 @@ spawn(function()
                                             StartMagnet = true
                                             game:GetService'VirtualUser':CaptureController()
                                             game:GetService'VirtualUser':Button1Down(Vector2.new(1280, 672))
-                                        until not _G.AutoFarm or v.Humanoid.Health <= 0 or not v.Parent or game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false
+                                        until not _G.AutoFarm or v.Humanoid.Health <= 0 or not v.Parent or not (getPlayerGuiMain() and getPlayerGuiMain():FindFirstChild("Quest") and getPlayerGuiMain().Quest.Visible == true)
                                     else
                                         StartMagnet = false
                                         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("AbandonQuest")
@@ -2380,7 +2443,7 @@ spawn(function()
                         UnEquipWeapon(_G.SelectWeapon)
                         StartMagnet = false
                         if game:GetService("ReplicatedStorage"):FindFirstChild(Mon) then
-                         ATween(game:GetService("ReplicatedStorage"):FindFirstChild(Mon).HumanoidRootPart.CFrame * CFrame.new(15,10,2))
+                            ATween(game:GetService("ReplicatedStorage"):FindFirstChild(Mon).HumanoidRootPart.CFrame * CFrame.new(15,10,2))
                         end
                     end
                 end

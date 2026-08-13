@@ -3,12 +3,44 @@ print("==============================================")
 print("[Black Kaitun] Script Loaded Successfully!")
 print("[Black Kaitun] Auto Farm System: ENABLED")
 print("==============================================")
--- Main UI
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local function safeCall(name, func, fallback)
+    local ok, result = xpcall(func, function(err)
+        warn("[BlackKaitun][" .. name .. "] " .. tostring(err))
+        if fallback then
+            pcall(fallback, err)
+        end
+        return err
+    end)
+    return ok, result
+end
+
+local function safeFind(parent, childName)
+    if not parent then
+        return nil
+    end
+    local ok, result = pcall(function()
+        if parent:FindFirstChild then
+            return parent:FindFirstChild(childName)
+        end
+        return nil
+    end)
+    if ok then
+        return result
+    end
+    return nil
+end
+
+if CoreGui:FindFirstChild("SkullHubUI") then
+    CoreGui.SkullHubUI:Destroy()
+end
 
 local blur = Instance.new("BlurEffect")
 blur.Size = 20
@@ -201,12 +233,26 @@ task.spawn(function()
     end
 end)
 
-if game:GetService("ReplicatedStorage").Effect.Container:FindFirstChild("Death") then
-    game:GetService("ReplicatedStorage").Effect.Container.Death:Destroy()
+local effectContainer = safeFind(ReplicatedStorage, "Effect")
+if effectContainer then
+    local effectFolder = safeFind(effectContainer, "Container")
+    if effectFolder then
+        safeCall("DestroyDeathEffect", function()
+            local death = safeFind(effectFolder, "Death")
+            if death then
+                death:Destroy()
+            end
+        end)
+
+        safeCall("DestroyRespawnEffect", function()
+            local respawn = safeFind(effectFolder, "Respawn")
+            if respawn then
+                respawn:Destroy()
+            end
+        end)
+    end
 end
-if game:GetService("ReplicatedStorage").Effect.Container:FindFirstChild("Respawn") then
-    game:GetService("ReplicatedStorage").Effect.Container.Respawn:Destroy()
-end
+
 if game.PlaceId == 2753915549 then
     World1 = true
 elseif game.PlaceId == 4442272183 then

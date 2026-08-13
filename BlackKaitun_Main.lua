@@ -3132,7 +3132,9 @@ spawn(function()
     pcall(function()
         while wait(.1) do
             if _G.AutoPlayerHunter then
-                if game:GetService("Players").LocalPlayer.PlayerGui.Main.PvpDisabled.Visible == true then
+                local mainGui = getPlayerGuiMain()
+                local pvpDisabled = mainGui and mainGui:FindFirstChild("PvpDisabled")
+                if pvpDisabled and pvpDisabled.Visible == true then
                     game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("EnablePvp")
                 end
             end
@@ -3142,12 +3144,26 @@ end)
 spawn(function()
     while wait() do
         if _G.AutoPlayerHunter then
-            if game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Visible == false then
+            local mainGui = getPlayerGuiMain()
+            local quest = mainGui and mainGui:FindFirstChild("Quest")
+            if not quest then
+                continue
+            end
+
+            if quest.Visible == false then
                 wait(.5)
                 game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("PlayerHunter")
             else
+                local questTitleText = ""
+                local container = quest:FindFirstChild("Container")
+                local questTitle = container and container:FindFirstChild("QuestTitle")
+                local title = questTitle and questTitle:FindFirstChild("Title")
+                if title then
+                    questTitleText = tostring(title.Text or "")
+                end
+
                 for i,v in pairs(game:GetService("Workspace").Characters:GetChildren()) do
-                    if string.find(game:GetService("Players").LocalPlayer.PlayerGui.Main.Quest.Container.QuestTitle.Title.Text,v.Name) then
+                    if string.find(questTitleText, v.Name) then
                         repeat wait()
                             if not game.Players.LocalPlayer.Character:FindFirstChild("HasBuso") then
                                 local args = {
@@ -3157,7 +3173,7 @@ spawn(function()
                             end
                             EquipWeapon(_G.SelectWeapon)
                             Useskill = true
-                            ATween(v.HumanoidRootPart.CFrame * CFrame.new(1,7,3))								
+                            ATween(v.HumanoidRootPart.CFrame * CFrame.new(1,7,3))
                             v.HumanoidRootPart.Size = Vector3.new(60,60,60)
                             game:GetService'VirtualUser':CaptureController()
                             game:GetService'VirtualUser':Button1Down(Vector2.new(1280, 672))
@@ -3711,9 +3727,15 @@ _G.Remove_trct = true
 spawn(function()
 	while wait() do
 		if _G.Remove_trct then
-			game.Players.LocalPlayer.PlayerGui.Notifications.Enabled = false
+			local notifications = game.Players.LocalPlayer.PlayerGui and game.Players.LocalPlayer.PlayerGui:FindFirstChild("Notifications")
+			if notifications then
+				notifications.Enabled = false
+			end
 		else
-			game.Players.LocalPlayer.PlayerGui.Notifications.Enabled = true
+			local notifications = game.Players.LocalPlayer.PlayerGui and game.Players.LocalPlayer.PlayerGui:FindFirstChild("Notifications")
+			if notifications then
+				notifications.Enabled = true
+			end
 		end
 	end
 end)
@@ -3886,8 +3908,11 @@ spawn(function()
     while wait(.1) do
         pcall(function()
             if _G.Auto_StartRaid then
-                if game:GetService("Players")["LocalPlayer"].PlayerGui.Main.Timer.Visible == false then
-                    if not game:GetService("Workspace")["_WorldOrigin"].Locations:FindFirstChild("Island 1") and game:GetService("Players").LocalPlayer.Backpack:FindFirstChild("Special Microchip") or game:GetService("Players").LocalPlayer.Character:FindFirstChild("Special Microchip") then
+                local mainGui = getPlayerGuiMain()
+                local timer = mainGui and mainGui:FindFirstChild("Timer")
+                if timer and timer.Visible == false then
+                    local hasSpecialChip = game:GetService("Players").LocalPlayer.Backpack:FindFirstChild("Special Microchip") or game:GetService("Players").LocalPlayer.Character:FindFirstChild("Special Microchip")
+                    if not game:GetService("Workspace")["_WorldOrigin"].Locations:FindFirstChild("Island 1") and hasSpecialChip then
                         if World2 then
                             fireclickdetector(game:GetService("Workspace").Map.CircleIsland.RaidSummon2.Button.Main.ClickDetector)
                         elseif World3 then
@@ -3903,7 +3928,9 @@ spawn(function()
     pcall(function() 
         while wait() do
             if _G.Kill_Aura then
-                if game:GetService("Players")["LocalPlayer"].PlayerGui.Main.Timer.Visible == true then
+                local mainGui = getPlayerGuiMain()
+                local timer = mainGui and mainGui:FindFirstChild("Timer")
+                if timer and timer.Visible == true then
                     for i,v in pairs(game:GetService("Workspace").Enemies:GetDescendants()) do
                         if v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v.Humanoid.Health > 0 then
                             pcall(function()
@@ -3924,7 +3951,9 @@ spawn(function()
     pcall(function()
         while wait() do
             if _G.Auto_Dungeon then
-                if game:GetService("Players")["LocalPlayer"].PlayerGui.Main.Timer.Visible == true then
+                local mainGui = getPlayerGuiMain()
+                local timer = mainGui and mainGui:FindFirstChild("Timer")
+                if timer and timer.Visible == true then
                     if game:GetService("Workspace")["_WorldOrigin"].Locations:FindFirstChild("Island 5") then
                         ATween(game:GetService("Workspace")["_WorldOrigin"].Locations:FindFirstChild("Island 5").CFrame*RaidPos)
                     elseif game:GetService("Workspace")["_WorldOrigin"].Locations:FindFirstChild("Island 4") then
